@@ -176,7 +176,7 @@ export const Events: React.FC = () => {
 
             <div className="timeline-container p-4">
               {filteredEvents.map((ev, index) => (
-                <div key={ev.id || index} className={`timeline-entry ${ev.type}`}>
+                <div key={`${ev.id}-${index}`} className={`timeline-entry ${ev.type}`}>
                   <div className="timeline-left">
                     <span className="timeline-badge-time font-mono">{ev.time}</span>
                     <div className={`timeline-bullet ${ev.type}`}>

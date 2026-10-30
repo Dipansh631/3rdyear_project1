@@ -1,477 +1,473 @@
 import React from 'react';
-import { 
-  ZoomIn, ZoomOut, Minus,
+import {
+  ZoomIn, ZoomOut, Maximize2,
   Play, Pause, RotateCcw,
   Plus, AlertTriangle, Package, Zap,
   Users, Trash2, Flame, ShieldAlert,
-  Activity, BatteryCharging
+  Activity, BatteryCharging, Bot, Cpu, CheckCircle2,
 } from 'lucide-react';
 import { useLogiMindStore } from '../store/useLogiMindStore';
 import './Simulation.css';
 
 const ALGORITHMS = [
-  { id: 'MAPPO', name: 'MAPPO', badge: 'Trained', desc: 'Centralized Critic MARL' },
-  { id: 'PPO', name: 'PPO', badge: 'Trained', desc: 'Independent Single-Agent' },
-  { id: 'A*', name: 'A* Search', badge: 'Classical', desc: 'Optimal Pathfinding' },
-  { id: 'Rule-Based', name: 'Rule-Based', badge: 'Baseline', desc: 'Priority FIFO Dispatch' },
-  { id: 'Q-MIX', name: 'Q-MIX', badge: 'Co-op', desc: 'Value Factorization' },
+  { id: 'MAPPO',      label: 'MAPPO (Trained)',      color: '#8b5cf6' },
+  { id: 'PPO',        label: 'PPO (Trained)',         color: '#3b82f6' },
+  { id: 'A*',         label: 'A* Search (Classical)', color: '#10b981' },
+  { id: 'Rule-Based', label: 'Rule-Based (Baseline)', color: '#f59e0b' },
+  { id: 'Q-MIX',     label: 'Q-MIX (Co-op)',         color: '#ef4444' },
 ];
 
 const SCENARIOS = [
-  { id: 'Normal Operations', name: 'Normal Operations', icon: Activity, desc: 'Balanced baseline logistics workflow' },
-  { id: 'Peak Demand Surge', name: 'Peak Demand Surge', icon: Flame, desc: '5 express priority rush orders injected' },
-  { id: 'Obstacle Surge', name: 'Obstacle Surge', icon: AlertTriangle, desc: 'Dynamic corridor debris and spills' },
-  { id: 'Fleet Failure Recovery', name: 'Fleet Failure Recovery', icon: ShieldAlert, desc: 'AMR fault & peer re-allocation' },
-  { id: 'Aisle Bottleneck & Congestion', name: 'Aisle Bottleneck', icon: Users, desc: 'Chokepoint near packing bay' },
-  { id: 'Battery Depletion & Docking', name: 'Battery Depletion', icon: BatteryCharging, desc: 'Emergency dock recharge protocol' },
+  { id: 'Normal Operations',             label: 'Normal Operations',        icon: Activity       },
+  { id: 'Peak Demand Surge',             label: 'Peak Demand Surge',        icon: Flame          },
+  { id: 'Obstacle Surge',                label: 'Obstacle Surge',           icon: AlertTriangle  },
+  { id: 'Fleet Failure Recovery',        label: 'Fleet Failure Recovery',   icon: ShieldAlert    },
+  { id: 'Aisle Bottleneck & Congestion', label: 'Aisle Bottleneck',         icon: Users          },
+  { id: 'Battery Depletion & Docking',   label: 'Battery Depletion',        icon: BatteryCharging},
 ];
 
 export const Simulation: React.FC = () => {
   const [zoom, setZoom] = React.useState(100);
   const [showPaths, setShowPaths] = React.useState(true);
-  const [showTasks, setShowTasks] = React.useState(true);
   const [showZones, setShowZones] = React.useState(false);
 
-  const { 
-    isRunning, 
-    toggleSimulation, 
-    resetSimulation, 
-    setSpeed, 
-    settings, 
-    robots, 
-    orders, 
-    events, 
-    obstacles, 
-    shelves, 
+  const {
+    isRunning,
+    toggleSimulation,
+    resetSimulation,
+    setSpeed,
+    settings,
+    robots,
+    orders,
+    events,
+    obstacles,
+    shelves,
     stations,
     activeScenario,
     setAlgorithm,
     setScenario,
-    addRobot, 
-    addObstacle, 
-    generateOrder, 
-    simulateFailure, 
-    createCongestion 
+    addRobot,
+    addObstacle,
+    generateOrder,
+    simulateFailure,
+    recoverRobot,
+    createCongestion,
   } = useLogiMindStore();
 
-  const gridW = settings.gridWidth || 20;
+  const failedCount = robots.filter(r => r.status === 'Failed').length;
+
+  const gridW = settings.gridWidth  || 20;
   const gridH = settings.gridHeight || 20;
 
+  const activeAlgo = ALGORITHMS.find(a => a.id === settings.algorithm) || ALGORITHMS[0];
+
   return (
-    <div className="simulation-page">
-      {/* Top Map & Controls Area */}
-      <div className="sim-main-grid">
-        {/* Left: Map Area */}
-        <div className="card map-card">
-          <div className="map-toolbar">
-            <div className="toolbar-left">
-              <button 
-                className="tool-btn" 
-                title="Zoom In"
-                onClick={() => setZoom(z => Math.min(200, z + 20))}
-              >
-                <ZoomIn size={16} />
-              </button>
-              <button 
-                className="tool-btn" 
-                title="Zoom Out"
-                onClick={() => setZoom(z => Math.max(60, z - 20))}
-              >
-                <ZoomOut size={16} />
-              </button>
-              <button 
-                className="tool-btn" 
-                title="Reset Zoom"
-                onClick={() => setZoom(100)}
-              >
-                <Minus size={16} />
-              </button>
-              <span className="zoom-level">{zoom}%</span>
-              <select 
-                className="toolbar-select algo-select"
-                value={settings.algorithm || 'MAPPO'}
-                onChange={(e) => setAlgorithm(e.target.value)}
-                title="Select Navigation & Dispatch Algorithm"
-              >
-                {ALGORITHMS.map((algo) => (
-                  <option key={algo.id} value={algo.id}>
-                    Algo: {algo.name} ({algo.badge})
-                  </option>
-                ))}
-              </select>
+    <div className="sim-page">
 
-              <select 
-                className="toolbar-select scenario-select"
-                value={activeScenario || 'Normal Operations'}
-                onChange={(e) => setScenario(e.target.value)}
-                title="Select Warehouse Operating Scenario"
-              >
-                {SCENARIOS.map((sc) => (
-                  <option key={sc.id} value={sc.id}>
-                    Scenario: {sc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="toolbar-right">
-              <label className="toggle-label">
-                <input 
-                  type="checkbox" 
-                  checked={showPaths} 
-                  onChange={(e) => setShowPaths(e.target.checked)}
-                  className="toggle-input" 
-                />
-                <span className="toggle-slider blue"></span>
-                Show Paths
-              </label>
-              <label className="toggle-label">
-                <input 
-                  type="checkbox" 
-                  checked={showTasks} 
-                  onChange={(e) => setShowTasks(e.target.checked)}
-                  className="toggle-input" 
-                />
-                <span className="toggle-slider blue"></span>
-                Show Tasks
-              </label>
-              <label className="toggle-label">
-                <input 
-                  type="checkbox" 
-                  checked={showZones} 
-                  onChange={(e) => setShowZones(e.target.checked)}
-                  className="toggle-input" 
-                />
-                <span className="toggle-slider gray"></span>
-                Show Zones
-              </label>
-            </div>
+      {/* ── TOP STRIP: algorithm + scenario + status ── */}
+      <div className="sim-topbar">
+        <div className="sim-topbar-left">
+          <div className="sim-brand">
+            <Cpu size={18} className="sim-brand-icon" />
+            <span>LogiMind Simulation</span>
           </div>
-          
-          <div className="map-content" style={{ overflow: 'hidden' }}>
-            <div 
-              className="mock-warehouse-map full-size" 
-              style={{ 
-                position: 'relative',
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.2s ease'
-              }}
-            >
-              {/* Dynamic Shelves */}
-              {shelves && shelves.length > 0 ? (
-                shelves.map(([r, c], idx) => (
-                  <div 
-                    key={`shelf-${idx}`} 
-                    className="mock-shelf" 
-                    style={{ 
-                      top: `${(r / gridH) * 100}%`, 
-                      left: `${(c / gridW) * 100}%`,
-                      width: '3.5%',
-                      height: '3.5%'
-                    }}
-                  />
-                ))
-              ) : (
-                <>
-                  <div className="mock-shelf" style={{top: '15%', left: '15%'}}></div>
-                  <div className="mock-shelf" style={{top: '15%', left: '25%'}}></div>
-                  <div className="mock-shelf" style={{top: '35%', left: '15%'}}></div>
-                  <div className="mock-shelf" style={{top: '35%', left: '25%'}}></div>
-                  <div className="mock-shelf" style={{top: '60%', left: '15%'}}></div>
-                  <div className="mock-shelf" style={{top: '60%', left: '25%'}}></div>
-                  <div className="mock-shelf" style={{top: '15%', left: '55%'}}></div>
-                  <div className="mock-shelf" style={{top: '35%', left: '55%'}}></div>
-                  <div className="mock-shelf" style={{top: '60%', left: '55%'}}></div>
-                </>
-              )}
 
-              {/* Dynamic Stations */}
-              {stations && Object.keys(stations).length > 0 ? (
-                Object.entries(stations).map(([stName, [r, c]]) => {
-                  const isPacking = stName.includes('packing');
-                  return (
-                    <div 
-                      key={stName} 
-                      className={`mock-station ${isPacking ? 'packing' : 'pickup'}`}
-                      style={{
-                        top: `${(r / gridH) * 100}%`, 
-                        left: `${(c / gridW) * 100}%`
-                      }}
-                      title={stName}
-                    >
-                      {isPacking ? 'P' : 'S'}
-                    </div>
-                  );
-                })
-              ) : (
-                <>
-                  <div className="mock-station pickup" style={{top: '10%', left: '5%'}}>P</div>
-                  <div className="mock-station pickup" style={{top: '40%', left: '90%'}}>P</div>
-                  <div className="mock-station packing" style={{top: '80%', left: '85%'}}>P</div>
-                </>
-              )}
-              
-              {/* Dynamic Robots */}
-              {robots.map((bot) => {
-                const topPct = (bot.position[0] / gridH) * 100;
-                const leftPct = (bot.position[1] / gridW) * 100;
-                return (
-                  <div 
-                    key={bot.id} 
-                    className={`mock-robot ${bot.status.toLowerCase()}`}
-                    style={{ 
-                      top: `${topPct}%`, 
-                      left: `${leftPct}%`,
-                      transition: 'top 0.5s linear, left 0.5s linear'
-                    }}
-                    title={`${bot.id} (${bot.status}) - ${bot.currentTask || 'Idle'}`}
-                  >
-                    <span 
-                      className="robot-badge" 
-                      style={{ backgroundColor: bot.color, color: '#fff' }}
-                    >
-                      {bot.id}
-                    </span>
-                    {bot.status === 'Active' && <div className="glow-ring green"></div>}
-                    {bot.status === 'Failed' && <div className="glow-ring red"></div>}
-                  </div>
-                );
-              })}
-              
-              {/* Dynamic Obstacles */}
-              {obstacles && obstacles.map(([r, c], idx) => (
-                <div 
-                  key={`obs-${idx}`} 
-                  className="mock-obstacle" 
-                  style={{ 
-                    top: `${(r / gridH) * 100}%`, 
-                    left: `${(c / gridW) * 100}%`,
-                    width: '32px',
-                    height: '32px'
-                  }}
-                  title="Dynamic Obstacle"
-                >
-                  <AlertTriangle size={18} color="#ef4444" className="absolute-center" />
-                </div>
+          <div className="sim-select-group">
+            <label className="sim-select-label">Algorithm</label>
+            <select
+              className="sim-select algo"
+              value={settings.algorithm || 'MAPPO'}
+              onChange={e => setAlgorithm(e.target.value)}
+            >
+              {ALGORITHMS.map(a => (
+                <option key={a.id} value={a.id}>{a.label}</option>
               ))}
-              
-              {/* Paths Vector Overlay */}
-              {showPaths && (
-                <svg className="path-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {robots.map((bot) => {
-                    if (!bot.path || bot.path.length === 0) return null;
-                  const pts = [[bot.position[0], bot.position[1]], ...bot.path];
-                  const dStr = pts
-                    .map((p, idx) => {
-                      const x = (p[1] / gridW) * 100;
-                      const y = (p[0] / gridH) * 100;
-                      return `${idx === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-                    })
-                    .join(' ');
-                  return (
-                    <path 
-                      key={`path-${bot.id}`} 
-                      d={dStr} 
-                      stroke={bot.color} 
-                      strokeWidth="0.8" 
-                      strokeDasharray="1.5 1.5" 
-                      fill="none" 
-                    />
-                  );
-                })}
-              </svg>
-              )}
-            </div>
-            
-            <div className="map-legend">
-              <div className="legend-item"><div className="legend-icon mock-shelf"></div> Shelf</div>
-              <div className="legend-item"><div className="legend-icon bg-gray-200"></div> Aisle (Free)</div>
-              <div className="legend-item"><div className="legend-icon mock-station pickup">S</div> Pickup Bay</div>
-              <div className="legend-item"><div className="legend-icon mock-station packing">P</div> Packing Dock</div>
-              <div className="legend-item"><div className="legend-icon mock-obstacle"></div> Dynamic Obstacle</div>
-              <div className="legend-item"><div className="legend-icon mock-robot active"></div> Robot (Active)</div>
-              <div className="legend-item"><div className="legend-icon mock-robot waiting"></div> Robot (Waiting)</div>
-              <div className="legend-item"><div className="legend-icon mock-robot failed"></div> Robot (Failed)</div>
-            </div>
+            </select>
+          </div>
+
+          <div className="sim-select-group">
+            <label className="sim-select-label">Scenario</label>
+            <select
+              className="sim-select scenario"
+              value={activeScenario || 'Normal Operations'}
+              onChange={e => setScenario(e.target.value)}
+            >
+              {SCENARIOS.map(s => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Right: Controls Area */}
-        <div className="sim-sidebar">
-          {/* Simulation Controls */}
-          <div className="card p-4">
-            <h3 className="card-title font-semibold mb-4">Simulation Controls</h3>
-            <div className="control-buttons">
-              <button 
-                className={`ctrl-btn ${isRunning ? 'bg-green text-white' : 'bg-gray-100'}`}
-                onClick={toggleSimulation}
-              >
-                {isRunning ? <><Pause size={16}/> Pause</> : <><Play size={16}/> Start</>}
-              </button>
-              <button className="ctrl-btn bg-gray-100" onClick={resetSimulation}>
-                <RotateCcw size={16}/> Reset
-              </button>
-            </div>
-            
-            <div className="speed-control mt-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold">Simulation Speed</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="5" 
-                  step="0.5" 
-                  value={settings.speed || 1.0} 
-                  onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                  className="speed-slider" 
-                />
-                <div className="speed-val">{settings.speed || 1.0}x</div>
-              </div>
-            </div>
+        <div className="sim-topbar-right">
+          <div className={`sim-status-pill ${isRunning ? 'running' : 'paused'}`}>
+            <span className="sim-status-dot" />
+            {isRunning ? 'Running' : 'Paused'}
+          </div>
+          <span className="sim-algo-tag" style={{ borderColor: activeAlgo.color, color: activeAlgo.color }}>
+            {activeAlgo.id}
+          </span>
+        </div>
+      </div>
 
-            <div className="dynamic-actions mt-6">
-              <span className="text-sm font-semibold mb-3 block">Dynamic Actions</span>
-              <div className="actions-grid">
-                <button className="action-btn text-blue bg-blue-light" onClick={addRobot}>
-                  <Plus size={16}/> Add Robot
-                </button>
-                <button className="action-btn text-gray-700 bg-gray-100" onClick={() => addObstacle()}>
-                  <AlertTriangle size={16}/> Add Obstacle
-                </button>
-                <button className="action-btn text-orange bg-orange-light" onClick={generateOrder}>
-                  <Package size={16}/> Generate Orders
-                </button>
-                <button className="action-btn text-red bg-red-light" onClick={() => simulateFailure()}>
-                  <Zap size={16}/> Simulate Failure
-                </button>
-                <button className="action-btn text-purple bg-purple-light" onClick={createCongestion}>
-                  <Users size={16}/> Create Congestion
-                </button>
-                <button className="action-btn text-gray-700 bg-gray-100" onClick={resetSimulation}>
-                  <Trash2 size={16}/> Clear All
-                </button>
-              </div>
+      {/* ── MAIN BODY ── */}
+      <div className="sim-body">
+
+        {/* LEFT: Map card */}
+        <div className="sim-map-card card">
+
+          {/* Map toolbar */}
+          <div className="sim-map-toolbar">
+            <div className="sim-map-toolbar-left">
+              <button className="sim-tool-btn" title="Zoom In"    onClick={() => setZoom(z => Math.min(200, z + 20))}><ZoomIn size={15} /></button>
+              <button className="sim-tool-btn" title="Zoom Out"   onClick={() => setZoom(z => Math.max(40,  z - 20))}><ZoomOut size={15} /></button>
+              <button className="sim-tool-btn" title="Reset Zoom" onClick={() => setZoom(100)}><Maximize2 size={15} /></button>
+              <span className="sim-zoom-badge">{zoom}%</span>
+            </div>
+            <div className="sim-map-toolbar-right">
+              <label className="sim-toggle-label">
+                <input type="checkbox" className="sim-toggle-input" checked={showPaths} onChange={e => setShowPaths(e.target.checked)} />
+                <span className="sim-toggle-track" />
+                Paths
+              </label>
+              <label className="sim-toggle-label">
+                <input type="checkbox" className="sim-toggle-input" checked={showZones} onChange={e => setShowZones(e.target.checked)} />
+                <span className="sim-toggle-track" />
+                Zones
+              </label>
             </div>
           </div>
 
-          {/* Warehouse Info */}
-          <div className="card p-4">
-            <h3 className="card-title font-semibold mb-4">Warehouse Telemetry</h3>
-            <div className="info-list">
-              <div className="info-row"><span>Grid Dimensions</span><span className="font-semibold">{gridW} × {gridH}</span></div>
-              <div className="info-row"><span>Active Algorithm</span><span className="font-semibold text-purple">{settings.algorithm || 'MAPPO'}</span></div>
-              <div className="info-row"><span>Active Scenario</span><span className="font-semibold text-orange">{activeScenario || 'Normal Operations'}</span></div>
-              <div className="info-row"><span>Total Storage Shelves</span><span className="font-semibold">{shelves?.length || 32}</span></div>
-              <div className="info-row"><span>Active Robot Swarm</span><span className="font-semibold text-blue">{robots.length} AMRs</span></div>
-              <div className="info-row"><span>Orders in Pipeline</span><span className="font-semibold text-orange">{orders.length}</span></div>
-              <div className="info-row"><span>Dynamic Obstacles</span><span className="font-semibold text-red">{obstacles?.length || 0}</span></div>
+          {/* Map canvas */}
+          <div className="sim-map-canvas-wrap">
+            <div
+              className="sim-map-canvas"
+              style={{
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: 'top left',
+                transition: 'transform 0.2s ease',
+              }}
+            >
+              {/* Grid overlay when showZones */}
+              {showZones && (
+                <svg className="sim-zone-grid" viewBox={`0 0 ${gridW} ${gridH}`} preserveAspectRatio="none">
+                  {Array.from({ length: gridW + 1 }, (_, i) => (
+                    <line key={`v${i}`} x1={i} y1={0} x2={i} y2={gridH} stroke="rgba(99,102,241,0.15)" strokeWidth="0.05" />
+                  ))}
+                  {Array.from({ length: gridH + 1 }, (_, i) => (
+                    <line key={`h${i}`} x1={0} y1={i} x2={gridW} y2={i} stroke="rgba(99,102,241,0.15)" strokeWidth="0.05" />
+                  ))}
+                </svg>
+              )}
+
+              {/* Shelves */}
+              {(shelves && shelves.length > 0 ? shelves : (
+                [[3,3],[3,5],[3,7],[3,9],[3,11],[3,13],
+                 [7,3],[7,5],[7,7],[7,9],[7,11],[7,13],
+                 [12,3],[12,5],[12,7],[12,9],[12,11],[12,13]] as [number,number][]
+              )).map(([r, c], idx) => (
+                <div
+                  key={`shelf-${idx}`}
+                  className="sim-shelf"
+                  style={{ top: `${((r + 0.5) / gridH) * 100}%`, left: `${((c + 0.5) / gridW) * 100}%` }}
+                />
+              ))}
+
+              {/* Stations */}
+              {(stations && Object.keys(stations).length > 0
+                ? Object.entries(stations).map(([name, [r, c]]) => ({ name, r, c, isPacking: name.includes('packing') }))
+                : [
+                    { name: 'Pickup-1', r: 1,  c: 1,  isPacking: false },
+                    { name: 'Pickup-2', r: 10, c: 18, isPacking: false },
+                    { name: 'Packing-1',r: 18, c: 17, isPacking: true  },
+                  ]
+              ).map(({ name, r, c, isPacking }) => (
+                <div
+                  key={name}
+                  className={`sim-station ${isPacking ? 'packing' : 'pickup'}`}
+                  style={{ top: `${((r + 0.5) / gridH) * 100}%`, left: `${((c + 0.5) / gridW) * 100}%` }}
+                  title={name}
+                >
+                  {isPacking ? 'P' : 'S'}
+                </div>
+              ))}
+
+              {/* Obstacles */}
+              {obstacles && obstacles.map(([r, c], idx) => (
+                <div
+                  key={`obs-${idx}`}
+                  className="sim-obstacle"
+                  style={{ top: `${((r + 0.5) / gridH) * 100}%`, left: `${((c + 0.5) / gridW) * 100}%` }}
+                  title="Dynamic Obstacle"
+                >
+                  <AlertTriangle size={14} />
+                </div>
+              ))}
+
+              {/* Robots */}
+              {robots.map(bot => (
+                <div
+                  key={bot.id}
+                  className={`sim-robot ${bot.status.toLowerCase()}`}
+                  style={{
+                    top:  `${((bot.position[0] + 0.5) / gridH) * 100}%`,
+                    left: `${((bot.position[1] + 0.5) / gridW) * 100}%`,
+                    '--robot-color': bot.color,
+                    transition: 'top 0.5s linear, left 0.5s linear',
+                  } as React.CSSProperties}
+                  title={`${bot.id} · ${bot.status} · ${bot.currentTask || 'Idle'}`}
+                >
+                  <Bot size={12} />
+                  <span className="sim-robot-label">{bot.id}</span>
+                  {bot.status === 'Active' && <span className="sim-robot-pulse" />}
+                </div>
+              ))}
+
+              {/* Paths SVG */}
+              {showPaths && (
+                <svg
+                  className="sim-paths-svg"
+                  viewBox={`0 0 ${gridW} ${gridH}`}
+                  preserveAspectRatio="none"
+                >
+                  {robots.map(bot => {
+                    if (!bot.path || bot.path.length === 0) return null;
+                    const pts = [bot.position, ...bot.path];
+                    const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[1] + 0.5} ${p[0] + 0.5}`).join(' ');
+                    return (
+                      <path
+                        key={`path-${bot.id}`}
+                        d={d}
+                        stroke={bot.color}
+                        strokeWidth="0.25"
+                        strokeDasharray="0.5 0.3"
+                        fill="none"
+                        opacity={0.75}
+                      />
+                    );
+                  })}
+                </svg>
+              )}
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="sim-legend">
+            <div className="sim-legend-item"><div className="sim-legend-swatch shelf"   /><span>Shelf</span></div>
+            <div className="sim-legend-item"><div className="sim-legend-swatch pickup"  /><span>Pickup</span></div>
+            <div className="sim-legend-item"><div className="sim-legend-swatch packing" /><span>Packing</span></div>
+            <div className="sim-legend-item"><div className="sim-legend-swatch obstacle"/><span>Obstacle</span></div>
+            <div className="sim-legend-item"><div className="sim-legend-swatch robot-active"  /><span>Active Robot</span></div>
+            <div className="sim-legend-item"><div className="sim-legend-swatch robot-waiting" /><span>Idle Robot</span></div>
+            <div className="sim-legend-item"><div className="sim-legend-swatch robot-failed"  /><span>Failed Robot</span></div>
+          </div>
+        </div>
+
+        {/* RIGHT: Controls sidebar */}
+        <div className="sim-sidebar">
+
+          {/* Playback controls */}
+          <div className="card sim-ctrl-card">
+            <h3 className="sim-ctrl-title">Simulation Controls</h3>
+
+            <div className="sim-ctrl-row">
+              <button
+                className={`sim-ctrl-btn primary ${isRunning ? 'pause' : 'play'}`}
+                onClick={toggleSimulation}
+              >
+                {isRunning ? <><Pause size={15}/> Pause</> : <><Play size={15}/> Start</>}
+              </button>
+              <button className="sim-ctrl-btn secondary" onClick={resetSimulation}>
+                <RotateCcw size={15}/> Reset
+              </button>
+            </div>
+
+            <div className="sim-speed-block">
+              <div className="sim-speed-header">
+                <span>Speed</span>
+                <span className="sim-speed-value">{settings.speed || 1.0}×</span>
+              </div>
+              <input
+                type="range"
+                min="0.5" max="5" step="0.5"
+                value={settings.speed || 1.0}
+                onChange={e => setSpeed(parseFloat(e.target.value))}
+                className="sim-speed-slider"
+              />
+              <div className="sim-speed-ticks">
+                <span>0.5×</span><span>2.5×</span><span>5×</span>
+              </div>
+            </div>
+
+            <div className="sim-divider" />
+
+            <span className="sim-section-label">Dynamic Actions</span>
+            <div className="sim-actions-grid">
+              <button className="sim-action-btn blue"   onClick={addRobot}>
+                <Plus size={14}/> Add Robot
+              </button>
+              <button className="sim-action-btn gray"   onClick={() => addObstacle()}>
+                <AlertTriangle size={14}/> Add Obstacle
+              </button>
+              <button className="sim-action-btn orange" onClick={generateOrder}>
+                <Package size={14}/> Gen Order
+              </button>
+              <button className="sim-action-btn red" onClick={() => simulateFailure()} title={failedCount > 0 ? `${failedCount} failed AMR(s). Click to fail next AMR or cycle.` : 'Simulate hardware fault on next AMR'}>
+                <Zap size={14}/> Sim Failure {failedCount > 0 ? `(${failedCount})` : ''}
+              </button>
+              <button className="sim-action-btn purple" onClick={createCongestion} title="Spawn dynamic aisle bottleneck & recalculate routes">
+                <Users size={14}/> Congestion
+              </button>
+              <button className="sim-action-btn gray"   onClick={resetSimulation} title="Reset simulation state">
+                <Trash2 size={14}/> Clear All
+              </button>
+              {failedCount > 0 && (
+                <button
+                  className="sim-action-btn green"
+                  style={{ gridColumn: 'span 2' }}
+                  onClick={() => robots.filter(r => r.status === 'Failed').forEach(r => recoverRobot(r.id))}
+                  title="Recover all failed robots back to active fleet"
+                >
+                  <CheckCircle2 size={14}/> Recover Fleet ({failedCount})
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Telemetry */}
+          <div className="card sim-tele-card">
+            <h3 className="sim-ctrl-title">Warehouse Telemetry</h3>
+            <div className="sim-tele-list">
+              {[
+                { label: 'Grid',       value: `${gridW} × ${gridH}` },
+                { label: 'Algorithm',  value: settings.algorithm || 'MAPPO',         accent: 'purple' },
+                { label: 'Scenario',   value: activeScenario || 'Normal Operations', accent: 'orange' },
+                { label: 'Shelves',    value: `${shelves?.length || 18}` },
+                { label: 'Robots',     value: `${robots.length} AMRs`,               accent: 'blue'   },
+                { label: 'Orders',     value: `${orders.length}`,                    accent: 'orange' },
+                { label: 'Obstacles',  value: `${obstacles?.length || 0}`,           accent: 'red'    },
+              ].map(row => (
+                <div className="sim-tele-row" key={row.label}>
+                  <span className="sim-tele-key">{row.label}</span>
+                  <span className={`sim-tele-val ${row.accent || ''}`}>{row.value}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Tables Area */}
-      <div className="bottom-tables-grid">
-        {/* Robot Status */}
-        <div className="card">
-          <div className="card-header px-4 pt-4 pb-2">
-            <h3 className="card-title font-semibold">Robot Swarm Status</h3>
+      {/* ── BOTTOM TABLES ── */}
+      <div className="sim-tables-grid">
+
+        {/* Robot table */}
+        <div className="card sim-table-card">
+          <div className="sim-table-header">
+            <h3 className="sim-ctrl-title">Robot Swarm Status</h3>
+            <span className="sim-table-count">{robots.length} AMRs</span>
           </div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Status</th>
-                <th>Battery</th>
-                <th>Current Task</th>
-                <th>Position</th>
-              </tr>
-            </thead>
-            <tbody>
-              {robots.map((r) => (
-                <tr key={r.id}>
-                  <td className="font-semibold" style={{ color: r.color }}>{r.id}</td>
-                  <td>
-                    <span className={`status-dot ${r.status.toLowerCase()} mr-2`}></span>
-                    {r.status}
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      {Math.round(r.battery)}% 
-                      <div className="mini-progress">
-                        <div 
-                          className={`fill ${r.battery < 30 ? 'bg-red' : r.battery < 70 ? 'bg-orange' : 'bg-green'}`} 
-                          style={{width: `${r.battery}%`}}
-                        />
+          <div className="sim-table-scroll">
+            <table className="sim-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Status</th><th>Battery</th><th>Task</th><th>Position</th>
+                </tr>
+              </thead>
+              <tbody>
+                {robots.map(r => (
+                  <tr key={r.id}>
+                    <td><span className="sim-robot-id" style={{ color: r.color }}>{r.id}</span></td>
+                    <td>
+                      <span
+                        className={`sim-status-badge ${r.status.toLowerCase()}`}
+                        style={r.status === 'Failed' ? { cursor: 'pointer' } : undefined}
+                        onClick={() => { if (r.status === 'Failed') recoverRobot(r.id); }}
+                        title={r.status === 'Failed' ? 'Click to Recover this AMR' : undefined}
+                      >
+                        <span className="sim-sdot" />
+                        {r.status}
+                        {r.status === 'Failed' && <span style={{ marginLeft: 4, textDecoration: 'underline', fontSize: '0.65rem' }}>↺ Fix</span>}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="sim-batt-cell">
+                        <span>{Math.round(r.battery)}%</span>
+                        <div className="sim-batt-bar">
+                          <div
+                            className={`sim-batt-fill ${r.battery < 30 ? 'red' : r.battery < 70 ? 'orange' : 'green'}`}
+                            style={{ width: `${r.battery}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td>{r.currentTask || 'None'}</td>
-                  <td>({r.position[0]}, {r.position[1]})</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td className="sim-task-cell">{r.currentTask || '—'}</td>
+                    <td className="sim-pos-cell">({r.position[0]}, {r.position[1]})</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Active Orders */}
-        <div className="card">
-          <div className="card-header px-4 pt-4 pb-2">
-            <h3 className="card-title font-semibold">Active Orders & Tasks</h3>
+        {/* Orders table */}
+        <div className="card sim-table-card">
+          <div className="sim-table-header">
+            <h3 className="sim-ctrl-title">Active Orders</h3>
+            <span className="sim-table-count">{orders.length} total</span>
           </div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Product</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Assigned Robot</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.slice(0, 5).map((o) => (
-                <tr key={o.id}>
-                  <td className="font-semibold text-blue">{o.id}</td>
-                  <td>{o.productName}</td>
-                  <td><span className={`badge ${o.priority.toLowerCase()}`}>{o.priority}</span></td>
-                  <td><span className={`badge ${o.status.toLowerCase()}`}>{o.status}</span></td>
-                  <td>{o.assignedRobot || '-'}</td>
+          <div className="sim-table-scroll">
+            <table className="sim-table">
+              <thead>
+                <tr>
+                  <th>Order</th><th>Product</th><th>Priority</th><th>Status</th><th>Robot</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {orders.slice(0, 6).map((o, idx) => (
+                  <tr key={`${o.id}-${idx}`}>
+                    <td><span className="sim-order-id">{o.id}</span></td>
+                    <td className="sim-product-cell">{o.productName}</td>
+                    <td><span className={`sim-badge priority-${o.priority.toLowerCase()}`}>{o.priority}</span></td>
+                    <td><span className={`sim-badge status-${o.status.toLowerCase()}`}>{o.status}</span></td>
+                    <td className="sim-assigned">{o.assignedRobot || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Event Log */}
-        <div className="card">
-          <div className="card-header px-4 pt-4 pb-2">
-            <h3 className="card-title font-semibold">Dynamic Telemetry Stream</h3>
+        {/* Events table */}
+        <div className="card sim-table-card">
+          <div className="sim-table-header">
+            <h3 className="sim-ctrl-title">Telemetry Stream</h3>
+            <span className="sim-table-count">Live</span>
           </div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Event</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.slice(0, 7).map((ev) => (
-                <tr key={ev.id}>
-                  <td className="font-mono text-xs">{ev.time}</td>
-                  <td>
-                    <span className={`status-dot ${ev.type} mr-2`}></span>
-                    {ev.title}
-                  </td>
-                  <td className="text-secondary text-xs">{ev.details}</td>
+          <div className="sim-table-scroll">
+            <table className="sim-table">
+              <thead>
+                <tr>
+                  <th>Time</th><th>Event</th><th>Details</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {events.slice(0, 8).map((ev, idx) => (
+                  <tr key={`${ev.id}-${idx}`}>
+                    <td className="sim-time-cell">{ev.time}</td>
+                    <td>
+                      <div className="sim-event-cell">
+                        <span className={`sim-event-dot ${ev.type}`} />
+                        <span>{ev.title}</span>
+                      </div>
+                    </td>
+                    <td className="sim-detail-cell">{ev.details}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
     </div>
   );

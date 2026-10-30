@@ -25,6 +25,8 @@ class WarehouseEngine:
             "packing_2": (10, 18),
         }
         self.events: List[dict] = []
+        self._event_counter = 0
+        self._order_counter = 8
         self.metrics_history = []
 
         self._initialize_default_layout()
@@ -78,8 +80,9 @@ class WarehouseEngine:
     def add_event(self, event_type: str, title: str, details: str, entity_id: Optional[str] = None):
         mins = self.sim_time_sec // 60
         secs = self.sim_time_sec % 60
+        self._event_counter += 1
         ev = {
-            "id": f"EV-{len(self.events) + 1}",
+            "id": f"EV-{self._event_counter}",
             "time": f"{mins:02d}:{secs:02d}",
             "type": event_type,
             "title": title,
@@ -174,12 +177,31 @@ class WarehouseEngine:
             self.add_event("warning", "Robot Decommissioned", f"Unit {robot_id} removed from fleet", robot_id)
 
     def simulate_failure(self, robot_id: Optional[str] = None):
-        target_id = robot_id or next((rid for rid, r in self.robots.items() if r.status != "Failed"), "R1")
-        if target_id in self.robots:
-            self.robots[target_id].status = "Failed"
-            self.robots[target_id].speed = 0.0
-            task = self.robots[target_id].current_task
-            self.robots[target_id].current_task = None
+        target_id = robot_id
+        # If no robot_id specified, or if the specified robot is ALREADY Failed:
+        if not target_id or (target_id in self.robots and self.robots[target_id].status == "Failed"):
+            # Find the next available non-failed robot
+            non_failed = [rid for rid, r in self.robots.items() if r.status != "Failed"]
+            if non_failed:
+                target_id = non_failed[0]
+            else:
+                # All robots in fleet are failed! Auto-recover fleet so user can continue testing cycles
+                for r in self.robots.values():
+                    r.status = "Waiting"
+                    r.task_type = "Idle"
+                    r.current_task = None
+                    r.speed = 1.0
+                    r.path = []
+                self.add_event("success", "Fleet Auto-Recovered", "All AMRs cleared of faults and restored to dispatch pool.")
+                target_id = next(iter(self.robots.keys()), "R1")
+
+        if target_id and target_id in self.robots:
+            r = self.robots[target_id]
+            r.status = "Failed"
+            r.speed = 0.0
+            r.path = []
+            task = r.current_task
+            r.current_task = None
             self.add_event("error", f"Robot Failure: {target_id}", f"Hardware fault stalled unit {target_id}. Peer task reallocation triggered.", target_id)
             # Reassign task if had one
             if task:
@@ -189,16 +211,63 @@ class WarehouseEngine:
                         o.assigned_robot = None
                         break
 
+    def recover_robot(self, robot_id: str):
+        if robot_id in self.robots:
+            r = self.robots[robot_id]
+            r.status = "Waiting"
+            r.task_type = "Idle"
+            r.current_task = None
+            r.speed = 1.0
+            r.path = []
+            self.add_event("success", f"Robot Recovered: {robot_id}", f"Unit {robot_id} hardware fault cleared. Returned to active fleet.", robot_id)
+
     def add_obstacle(self, pos: Optional[Tuple[int, int]] = None):
         target = pos or (random.randint(2, self.width-3), random.randint(2, self.height-3))
+        # Ensure we don't spawn directly inside an existing shelf
+        tries = 0
+        while target in self.shelves and tries < 20:
+            target = (random.randint(2, self.width-3), random.randint(2, self.height-3))
+            tries += 1
         self.obstacles.add(target)
+        # Reroute any robot whose path passes through this newly placed obstacle
+        for r in self.robots.values():
+            if target in r.path:
+                r.path = []
         self.add_event("warning", "Dynamic Obstacle Spawned", f"Debris detected at ({target[0]}, {target[1]}). Rerouting active paths.")
 
     def create_congestion(self):
-        self.add_event("warning", "Congestion Spike Simulated", "Traffic density surged. Centralized critic evaluating detour rewards.")
+        # Critical corridor choke points and main intersection crossings
+        potential_chokepoints = [
+            (8, 10), (10, 10), (12, 10),
+            (10, 16), (16, 15), (14, 16),
+            (6, 8), (8, 8), (10, 8),
+            (9, 14), (13, 14), (15, 8),
+            (4, 10), (5, 6), (11, 14), (7, 16)
+        ]
+        candidates = [p for p in potential_chokepoints if p not in self.obstacles and p not in self.shelves]
+        if not candidates:
+            station_cells = set(self.stations.values())
+            candidates = [
+                (r, c) for r in range(2, self.height - 2)
+                for c in range(2, self.width - 2)
+                if (r, c) not in self.shelves and (r, c) not in self.obstacles and (r, c) not in station_cells
+            ]
+        new_chokepoints = random.sample(candidates, min(3, len(candidates))) if candidates else []
+        for pos in new_chokepoints:
+            self.obstacles.add(pos)
+
+        # Invalidate paths so all active robots dynamically recalculate detours around congestion
+        for r in self.robots.values():
+            r.path = []
+            if r.status == "Active":
+                r.speed = max(0.4, round(r.speed * 0.7, 2))
+
+        loc_str = ", ".join(f"({r},{c})" for r, c in new_chokepoints) if new_chokepoints else "main aisles"
+        self.add_event("warning", "Congestion Surge Created", f"Corridor bottleneck formed at {loc_str}. AMR paths recalculated under MARL traffic avoidance.")
 
     def generate_order(self) -> Order:
-        next_id = f"ORD-{100 + len(self.orders) + 1}"
+        self._order_counter += 1
+        next_id = f"ORD-{100 + self._order_counter}"
         skus = [("SKU-55", "Sensor Kit"), ("SKU-72", "Battery Core"), ("SKU-88", "Controller Unit"), ("SKU-41", "Actuator Arm"), ("SKU-99", "Micro-Camera Array")]
         sku_code, sku_name = random.choice(skus)
         new_order = Order(

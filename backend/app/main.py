@@ -133,12 +133,15 @@ def simulate_robot_failure(robot_id: str):
     engine.simulate_failure(robot_id)
     return {"status": "failed", "robot_id": robot_id}
 
+@app.post("/api/simulation/failure")
+def simulate_fleet_failure():
+    engine.simulate_failure()
+    return {"status": "failure_simulated"}
+
 @app.post("/api/robots/{robot_id}/recover")
 def recover_robot(robot_id: str):
     if robot_id in engine.robots:
-        engine.robots[robot_id].status = "Active"
-        engine.robots[robot_id].speed = 1.0
-        engine.add_event("success", f"Robot Recovered: {robot_id}", "Hardware fault cleared. Returned to active fleet.", robot_id)
+        engine.recover_robot(robot_id)
         return {"status": "recovered"}
     raise HTTPException(status_code=404, detail="Robot not found")
 

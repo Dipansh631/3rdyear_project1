@@ -64,7 +64,7 @@ export interface SimulationSettings {
   shelfCount: number;
   stationCount: number;
   robotCount: number;
-  algorithm: 'MAPPO' | 'PPO' | 'A*' | 'Rule-Based';
+  algorithm: 'MAPPO' | 'PPO' | 'A*' | 'Rule-Based' | 'Q-MIX';
   speed: number;
   showPaths: boolean;
   showZones: boolean;
@@ -287,7 +287,11 @@ export const useLogiMindStore = create<LogiMindStore>((set, get) => ({
   },
 
   simulateFailure: (robotId) => {
-    const target = robotId || get().robots[0]?.id;
+    let target = robotId;
+    if (!target) {
+      const activeBot = get().robots.find(r => r.status !== 'Failed');
+      target = activeBot ? activeBot.id : get().robots[0]?.id;
+    }
     if (target) {
       fetch(`${API_BASE}/api/robots/${target}/failure`, { method: 'POST' }).catch(() => {});
     }
@@ -366,7 +370,7 @@ export const useLogiMindStore = create<LogiMindStore>((set, get) => ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ algorithm })
     }).catch(() => {});
-    set((state) => ({ settings: { ...state.settings, algorithm: algorithm as any } }));
+    set((state) => ({ settings: { ...state.settings, algorithm: algorithm as SimulationSettings['algorithm'] } }));
   },
 
   setScenario: (scenario: string) => {
