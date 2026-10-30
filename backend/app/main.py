@@ -55,7 +55,7 @@ async def websocket_simulation(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             # Can receive client commands here if needed
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, Exception):
         ws_manager.disconnect(websocket)
 
 # ----------------- REST Endpoints ----------------- #

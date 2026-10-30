@@ -205,7 +205,9 @@ export const useLogiMindStore = create<LogiMindStore>((set, get) => ({
   },
 
   initWebSocket: () => {
-    if (socket) return;
+    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
     try {
       socket = new WebSocket('ws://localhost:8000/ws/simulation');
       
@@ -252,9 +254,16 @@ export const useLogiMindStore = create<LogiMindStore>((set, get) => ({
 
       socket.onerror = () => {
         set({ isConnected: false });
+        if (socket && socket.readyState !== WebSocket.OPEN) {
+          try { socket.close(); } catch (_) {}
+          socket = null;
+        }
       };
     } catch (e) {
       console.warn('[LogiMind] WebSocket connection error:', e);
+      set({ isConnected: false });
+      socket = null;
+      setTimeout(() => get().initWebSocket(), 2000);
     }
   },
 
