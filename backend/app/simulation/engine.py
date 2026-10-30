@@ -217,6 +217,64 @@ class WarehouseEngine:
         self.add_event("info", "Order Ingested", f"{new_order.id} ({new_order.product_name}) queued into demand buffer", new_order.id)
         return new_order
 
+    def set_algorithm(self, algorithm: str):
+        self.algorithm = algorithm
+        self.add_event("info", "Algorithm Switched", f"Active navigation engine switched to {algorithm}")
+
+    def set_scenario(self, scenario_name: str):
+        self.active_scenario = scenario_name
+        all_blocks = self.shelves | self.obstacles
+
+        if scenario_name == "Normal Operations":
+            self.obstacles = {(11, 7), (15, 13)}
+            for r in self.robots.values():
+                if r.status in ("Failed", "Maintenance"):
+                    r.status = "Waiting"
+                    r.speed = 1.0
+                r.battery = max(r.battery, 85.0)
+            self.add_event("info", "Scenario: Normal Operations", "Baseline warehouse conditions restored.")
+
+        elif scenario_name == "Peak Demand Surge" or scenario_name == "Peak Demand":
+            for _ in range(5):
+                self.generate_order()
+            self.add_event("warning", "Scenario: Peak Demand Surge", "5 high-priority urgent orders queued into buffer.")
+
+        elif scenario_name == "Obstacle Surge":
+            new_obs = [(5, 6), (9, 10), (11, 7), (13, 4), (15, 13), (7, 14), (12, 11)]
+            for pos in new_obs:
+                if pos not in self.shelves:
+                    self.obstacles.add(pos)
+            # Invalidate robot paths to trigger immediate reroute
+            for r in self.robots.values():
+                r.path = []
+            self.add_event("error", "Scenario: Obstacle Surge", "Multiple spills and obstructions spawned across corridors.")
+
+        elif scenario_name == "Fleet Failure Recovery":
+            for rid in ["R1", "R4"]:
+                if rid in self.robots:
+                    self.simulate_failure(rid)
+            self.add_event("error", "Scenario: Fleet Failure Recovery", "Hardware failure injected into AMRs. Peer task reallocation active.")
+
+        elif scenario_name == "Aisle Bottleneck & Congestion":
+            bottlenecks = [(16, 15), (16, 17), (10, 16)]
+            for pos in bottlenecks:
+                self.obstacles.add(pos)
+            for r in self.robots.values():
+                r.path = []
+            self.add_event("warning", "Scenario: Aisle Bottleneck", "Access to packing corridors restricted. Heavy traffic expected.")
+
+        elif scenario_name == "Battery Depletion & Docking":
+            for i, r in enumerate(self.robots.values()):
+                r.battery = max(10.0, 15.0 + i * 4.0)
+                if r.battery < 25.0:
+                    r.status = "Charging"
+                    r.task_type = "Charging"
+                    r.current_task = None
+            self.add_event("warning", "Scenario: Battery Depletion", "Fleet-wide low battery alarm. Emergency charging protocol initiated.")
+
+        else:
+            self.add_event("info", f"Scenario: {scenario_name}", f"Warehouse simulation profile switched to {scenario_name}.")
+
     def get_state(self) -> dict:
         mins = self.sim_time_sec // 60
         secs = self.sim_time_sec % 60

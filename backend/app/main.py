@@ -91,6 +91,22 @@ def set_speed(payload: SpeedPayload):
     engine.speed = max(0.1, min(5.0, payload.speed))
     return {"speed": engine.speed}
 
+class AlgorithmPayload(BaseModel):
+    algorithm: str
+
+@app.post("/api/simulation/algorithm")
+def set_algorithm(payload: AlgorithmPayload):
+    engine.set_algorithm(payload.algorithm)
+    return {"algorithm": engine.algorithm}
+
+class ScenarioPayload(BaseModel):
+    scenario: str
+
+@app.post("/api/simulation/scenario")
+def set_scenario(payload: ScenarioPayload):
+    engine.set_scenario(payload.scenario)
+    return {"scenario": engine.active_scenario}
+
 # 2. Robots
 @app.get("/api/robots")
 def list_robots():

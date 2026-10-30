@@ -118,6 +118,8 @@ interface LogiMindStore {
   stopTraining: () => void;
   loadCheckpoint: (id: string) => void;
   updateSettings: (newSettings: Partial<SimulationSettings>) => void;
+  setAlgorithm: (algorithm: string) => void;
+  setScenario: (scenario: string) => void;
 }
 
 const API_BASE = 'http://localhost:8000';
@@ -356,5 +358,23 @@ export const useLogiMindStore = create<LogiMindStore>((set, get) => ({
       body: JSON.stringify(merged)
     }).catch(() => {});
     set({ settings: merged });
+  },
+
+  setAlgorithm: (algorithm: string) => {
+    fetch(`${API_BASE}/api/simulation/algorithm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ algorithm })
+    }).catch(() => {});
+    set((state) => ({ settings: { ...state.settings, algorithm: algorithm as any } }));
+  },
+
+  setScenario: (scenario: string) => {
+    fetch(`${API_BASE}/api/simulation/scenario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario })
+    }).catch(() => {});
+    set({ activeScenario: scenario });
   }
 }));

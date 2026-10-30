@@ -3,10 +3,28 @@ import {
   ZoomIn, ZoomOut, Minus,
   Play, Pause, RotateCcw,
   Plus, AlertTriangle, Package, Zap,
-  Users, Trash2
+  Users, Trash2, Cpu, Flame, ShieldAlert,
+  Activity, BatteryCharging, CheckCircle2, Sparkles
 } from 'lucide-react';
 import { useLogiMindStore } from '../store/useLogiMindStore';
 import './Simulation.css';
+
+const ALGORITHMS = [
+  { id: 'MAPPO', name: 'MAPPO', badge: 'Trained', desc: 'Centralized Critic MARL' },
+  { id: 'PPO', name: 'PPO', badge: 'Trained', desc: 'Independent Single-Agent' },
+  { id: 'A*', name: 'A* Search', badge: 'Classical', desc: 'Optimal Pathfinding' },
+  { id: 'Rule-Based', name: 'Rule-Based', badge: 'Baseline', desc: 'Priority FIFO Dispatch' },
+  { id: 'Q-MIX', name: 'Q-MIX', badge: 'Co-op', desc: 'Value Factorization' },
+];
+
+const SCENARIOS = [
+  { id: 'Normal Operations', name: 'Normal Operations', icon: Activity, desc: 'Balanced baseline logistics workflow' },
+  { id: 'Peak Demand Surge', name: 'Peak Demand Surge', icon: Flame, desc: '5 express priority rush orders injected' },
+  { id: 'Obstacle Surge', name: 'Obstacle Surge', icon: AlertTriangle, desc: 'Dynamic corridor debris and spills' },
+  { id: 'Fleet Failure Recovery', name: 'Fleet Failure Recovery', icon: ShieldAlert, desc: 'AMR fault & peer re-allocation' },
+  { id: 'Aisle Bottleneck & Congestion', name: 'Aisle Bottleneck', icon: Users, desc: 'Chokepoint near packing bay' },
+  { id: 'Battery Depletion & Docking', name: 'Battery Depletion', icon: BatteryCharging, desc: 'Emergency dock recharge protocol' },
+];
 
 export const Simulation: React.FC = () => {
   const [zoom, setZoom] = React.useState(100);
@@ -26,6 +44,9 @@ export const Simulation: React.FC = () => {
     obstacles, 
     shelves, 
     stations,
+    activeScenario,
+    setAlgorithm,
+    setScenario,
     addRobot, 
     addObstacle, 
     generateOrder, 
@@ -255,6 +276,82 @@ export const Simulation: React.FC = () => {
 
         {/* Right: Controls Area */}
         <div className="sim-sidebar">
+          {/* Navigation Algorithm Selector */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="card-title font-semibold flex items-center gap-2">
+                <Cpu size={18} className="text-purple" />
+                Algorithm Policy
+              </h3>
+              <span className="badge purple text-xs">{settings.algorithm || 'MAPPO'}</span>
+            </div>
+            <p className="text-xs text-secondary mb-2">Select the navigation & dispatching algorithm:</p>
+            
+            <div className="algo-buttons">
+              {ALGORITHMS.map((algo) => {
+                const isActive = (settings.algorithm || 'MAPPO') === algo.id;
+                return (
+                  <button
+                    key={algo.id}
+                    className={`algo-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setAlgorithm(algo.id)}
+                    title={`Switch to ${algo.name}`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="algo-btn-title">{algo.name}</span>
+                      {isActive && <CheckCircle2 size={12} className="text-blue flex-shrink-0" />}
+                    </div>
+                    <span className="algo-btn-desc">{algo.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {(settings.algorithm === 'MAPPO' || settings.algorithm === 'PPO' || !settings.algorithm) && (
+              <div className="algo-status-pill">
+                <Sparkles size={12} />
+                <span>PyTorch Trained Model Weights Active</span>
+              </div>
+            )}
+          </div>
+
+          {/* Warehouse Scenarios Selector */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="card-title font-semibold flex items-center gap-2">
+                <Activity size={18} className="text-orange" />
+                Warehouse Scenarios
+              </h3>
+              <span className="badge orange text-xs">{activeScenario || 'Normal Operations'}</span>
+            </div>
+            <p className="text-xs text-secondary mb-2">Trigger real-time operating conditions:</p>
+
+            <div className="scenario-list">
+              {SCENARIOS.map((sc) => {
+                const IconComponent = sc.icon;
+                const isActive = (activeScenario || 'Normal Operations') === sc.id;
+                return (
+                  <div
+                    key={sc.id}
+                    className={`scenario-card-item ${isActive ? 'active' : ''}`}
+                    onClick={() => setScenario(sc.id)}
+                  >
+                    <div className="scenario-icon">
+                      <IconComponent size={15} className={isActive ? 'text-green' : 'text-secondary'} />
+                    </div>
+                    <div className="scenario-info">
+                      <div className="scenario-title">
+                        <span>{sc.name}</span>
+                        {isActive && <span className="status-dot green"></span>}
+                      </div>
+                      <span className="scenario-desc">{sc.desc}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Simulation Controls */}
           <div className="card p-4">
             <h3 className="card-title font-semibold mb-4">Simulation Controls</h3>
@@ -318,7 +415,8 @@ export const Simulation: React.FC = () => {
             <h3 className="card-title font-semibold mb-4">Warehouse Telemetry</h3>
             <div className="info-list">
               <div className="info-row"><span>Grid Dimensions</span><span className="font-semibold">{gridW} × {gridH}</span></div>
-              <div className="info-row"><span>Active Algorithm</span><span className="font-semibold text-purple">{settings.algorithm}</span></div>
+              <div className="info-row"><span>Active Algorithm</span><span className="font-semibold text-purple">{settings.algorithm || 'MAPPO'}</span></div>
+              <div className="info-row"><span>Active Scenario</span><span className="font-semibold text-orange">{activeScenario || 'Normal Operations'}</span></div>
               <div className="info-row"><span>Total Storage Shelves</span><span className="font-semibold">{shelves?.length || 32}</span></div>
               <div className="info-row"><span>Active Robot Swarm</span><span className="font-semibold text-blue">{robots.length} AMRs</span></div>
               <div className="info-row"><span>Orders in Pipeline</span><span className="font-semibold text-orange">{orders.length}</span></div>
