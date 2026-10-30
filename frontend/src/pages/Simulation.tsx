@@ -3,8 +3,8 @@ import {
   ZoomIn, ZoomOut, Minus,
   Play, Pause, RotateCcw,
   Plus, AlertTriangle, Package, Zap,
-  Users, Trash2, Cpu, Flame, ShieldAlert,
-  Activity, BatteryCharging, CheckCircle2, Sparkles
+  Users, Trash2, Flame, ShieldAlert,
+  Activity, BatteryCharging
 } from 'lucide-react';
 import { useLogiMindStore } from '../store/useLogiMindStore';
 import './Simulation.css';
@@ -87,8 +87,30 @@ export const Simulation: React.FC = () => {
                 <Minus size={16} />
               </button>
               <span className="zoom-level">{zoom}%</span>
-              <select className="view-select">
-                <option>20x20 Discrete Grid View</option>
+              <select 
+                className="toolbar-select algo-select"
+                value={settings.algorithm || 'MAPPO'}
+                onChange={(e) => setAlgorithm(e.target.value)}
+                title="Select Navigation & Dispatch Algorithm"
+              >
+                {ALGORITHMS.map((algo) => (
+                  <option key={algo.id} value={algo.id}>
+                    Algo: {algo.name} ({algo.badge})
+                  </option>
+                ))}
+              </select>
+
+              <select 
+                className="toolbar-select scenario-select"
+                value={activeScenario || 'Normal Operations'}
+                onChange={(e) => setScenario(e.target.value)}
+                title="Select Warehouse Operating Scenario"
+              >
+                {SCENARIOS.map((sc) => (
+                  <option key={sc.id} value={sc.id}>
+                    Scenario: {sc.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="toolbar-right">
@@ -276,82 +298,6 @@ export const Simulation: React.FC = () => {
 
         {/* Right: Controls Area */}
         <div className="sim-sidebar">
-          {/* Navigation Algorithm Selector */}
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="card-title font-semibold flex items-center gap-2">
-                <Cpu size={18} className="text-purple" />
-                Algorithm Policy
-              </h3>
-              <span className="badge purple text-xs">{settings.algorithm || 'MAPPO'}</span>
-            </div>
-            <p className="text-xs text-secondary mb-2">Select the navigation & dispatching algorithm:</p>
-            
-            <div className="algo-buttons">
-              {ALGORITHMS.map((algo) => {
-                const isActive = (settings.algorithm || 'MAPPO') === algo.id;
-                return (
-                  <button
-                    key={algo.id}
-                    className={`algo-btn ${isActive ? 'active' : ''}`}
-                    onClick={() => setAlgorithm(algo.id)}
-                    title={`Switch to ${algo.name}`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="algo-btn-title">{algo.name}</span>
-                      {isActive && <CheckCircle2 size={12} className="text-blue flex-shrink-0" />}
-                    </div>
-                    <span className="algo-btn-desc">{algo.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {(settings.algorithm === 'MAPPO' || settings.algorithm === 'PPO' || !settings.algorithm) && (
-              <div className="algo-status-pill">
-                <Sparkles size={12} />
-                <span>PyTorch Trained Model Weights Active</span>
-              </div>
-            )}
-          </div>
-
-          {/* Warehouse Scenarios Selector */}
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="card-title font-semibold flex items-center gap-2">
-                <Activity size={18} className="text-orange" />
-                Warehouse Scenarios
-              </h3>
-              <span className="badge orange text-xs">{activeScenario || 'Normal Operations'}</span>
-            </div>
-            <p className="text-xs text-secondary mb-2">Trigger real-time operating conditions:</p>
-
-            <div className="scenario-list">
-              {SCENARIOS.map((sc) => {
-                const IconComponent = sc.icon;
-                const isActive = (activeScenario || 'Normal Operations') === sc.id;
-                return (
-                  <div
-                    key={sc.id}
-                    className={`scenario-card-item ${isActive ? 'active' : ''}`}
-                    onClick={() => setScenario(sc.id)}
-                  >
-                    <div className="scenario-icon">
-                      <IconComponent size={15} className={isActive ? 'text-green' : 'text-secondary'} />
-                    </div>
-                    <div className="scenario-info">
-                      <div className="scenario-title">
-                        <span>{sc.name}</span>
-                        {isActive && <span className="status-dot green"></span>}
-                      </div>
-                      <span className="scenario-desc">{sc.desc}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Simulation Controls */}
           <div className="card p-4">
             <h3 className="card-title font-semibold mb-4">Simulation Controls</h3>
