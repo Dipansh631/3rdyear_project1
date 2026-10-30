@@ -1,0 +1,104 @@
+.orders-page {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.orders-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.orders-content-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .orders-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.orders-main-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.row-selected {
+  background-color: #f0f7ff !important;
+}
+
+.pipeline-steps {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .pipeline-steps {
+    flex-direction: column;
+  }
+}
+
+.step-card {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.step-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pipeline-item {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.success-item {
+  border-left: 3px solid var(--success);
+}
+
+.orders-right-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.order-icon-large {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

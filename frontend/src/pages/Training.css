@@ -1,0 +1,71 @@
+.training-page {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.training-banner {
+  background: linear-gradient(135deg, #ffffff 0%, #fdf4ff 100%);
+  border: 1px solid var(--border);
+}
+
+.training-progress-track {
+  width: 100%;
+  height: 8px;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.training-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6 0%, #3b82f6 100%);
+  transition: width 0.3s ease;
+}
+
+.training-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .training-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.algo-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.algo-btn {
+  border: 1px solid var(--border);
+  background: #ffffff;
+  padding: 0.6rem 0.4rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.algo-btn.selected {
+  border-color: var(--purple);
+  background: #fbf7ff;
+  box-shadow: 0 0 0 1px var(--purple);
+}
+
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.training-charts-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
