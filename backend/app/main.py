@@ -215,7 +215,9 @@ class Checkpoint(BaseModel):
     active: bool
 
 checkpoints = [
-    Checkpoint(id="chk-1", name="MAPPO-v3-WarehousePro", algorithm="MAPPO", episodes=12500, reward=284.6, date="2026-10-28", size="48.2 MB", active=True),
+    Checkpoint(id="chk-mappo-v1", name="MAPPO-v1-Warehouse-Fleet", algorithm="MAPPO", episodes=100, reward=73.04, date="2026-10-30", size="1.2 MB", active=True),
+    Checkpoint(id="chk-ppo-v1", name="PPO-v1-Warehouse-SingleAgent", algorithm="PPO", episodes=100, reward=36.33, date="2026-10-30", size="479 KB", active=False),
+    Checkpoint(id="chk-1", name="MAPPO-v3-WarehousePro", algorithm="MAPPO", episodes=12500, reward=284.6, date="2026-10-28", size="48.2 MB", active=False),
     Checkpoint(id="chk-2", name="MAPPO-v2-Baseline", algorithm="MAPPO", episodes=8000, reward=221.4, date="2026-10-25", size="48.0 MB", active=False),
     Checkpoint(id="chk-3", name="PPO-SingleAgent-Ref", algorithm="PPO", episodes=10000, reward=168.9, date="2026-10-22", size="24.5 MB", active=False),
     Checkpoint(id="chk-4", name="QMIX-Cooperative-Exp", algorithm="Q-MIX", episodes=6500, reward=195.1, date="2026-10-18", size="36.8 MB", active=False),
@@ -231,8 +233,18 @@ def load_model(model_id: str):
     for c in checkpoints:
         c.active = (c.id == model_id)
     engine.algorithm = next((c.algorithm for c in checkpoints if c.id == model_id), "MAPPO")
-    engine.add_event("success", "Model Checkpoint Loaded", f"Active inference switched to {model_id}")
+    engine.add_event("success", "Model Checkpoint Loaded", f"Active inference switched to {model_id} ({engine.algorithm})")
     return {"status": "loaded", "model_id": model_id}
+
+@app.post("/api/training/run-ppo")
+def run_ppo_trigger():
+    engine.add_event("info", "PPO Training Triggered", "PPO actor-critic optimization started")
+    return {"status": "started", "algorithm": "PPO"}
+
+@app.post("/api/training/run-mappo")
+def run_mappo_trigger():
+    engine.add_event("info", "MAPPO Training Triggered", "MAPPO centralized critic optimization started")
+    return {"status": "started", "algorithm": "MAPPO"}
 
 # 6. Settings
 class SettingsPayload(BaseModel):
