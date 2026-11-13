@@ -1,3 +1,44 @@
+Frontend: React + TypeScript + Vite
+React + TypeScript → main frontend
+Vite → fast development/build
+Tailwind CSS → dashboard styling
+shadcn/ui → professional UI components
+Recharts → evaluation graphs and RL training metrics
+Lucide React → icons
+React Router → your multiple pages
+Zustand → global simulation state
+Socket.IO Client / WebSocket → real-time robot/simulation updates
+React Flow → architecture/workflow visualizations if needed
+HTML Canvas / SVG → warehouse grid and robot visualization
+
+React + TypeScript + Vite
+          │
+          ├── Dashboard
+          ├── Warehouse Simulation
+          ├── Robot Fleet
+          ├── Orders & Tasks
+          ├── Events & Environment
+          ├── Training & Models
+          ├── Evaluation & Comparison
+          └── Configuration / Settings
+                    │
+                    ↓
+             Zustand Store
+                    │
+          WebSocket / REST API
+                    │
+                    ↓
+              FastAPI Backend
+                    │
+        ┌───────────┼───────────┐
+        ↓           ↓           ↓
+  Simulator    MARL Engine   Database
+        │           │
+        └───────────┘
+              ↓
+        Robot Decisions
+
+        
 LogiMind RL — Frontend Page Structure
                     LOGIMIND RL
                         │
